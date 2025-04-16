@@ -7,8 +7,35 @@
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Добавляем базовые стили для отладки -->
+    <style>
+        .debug-info {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 9999;
+            font-family: monospace;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #mainContainer {
+            flex: 1;
+        }
+    </style>
 </head>
 <body>
+    <!-- Debug Info -->
+    <div id="debugInfo" class="debug-info"></div>
+
     <!-- Loading Container -->
     <div id="loaderContainer" class="loader-container">
         <div class="loader"></div>
@@ -53,8 +80,8 @@
         </div>
     </div>
 
-    <!-- Main Container (hidden by default) -->
-    <div id="mainContainer" class="container hidden">
+    <!-- Main Container -->
+    <div id="mainContainer" class="container">
         <header>
             <div class="logo">
                 <i class="fas fa-user-shield"></i>
@@ -220,6 +247,26 @@
             </form>
         </div>
     </div>
+
+    <script>
+        // Добавляем отладочную информацию
+        const debugInfo = document.getElementById('debugInfo');
+        function updateDebugInfo() {
+            const info = {
+                windowSize: `${window.innerWidth}x${window.innerHeight}`,
+                authContainer: document.getElementById('authContainer').classList.contains('hidden'),
+                mainContainer: document.getElementById('mainContainer').classList.contains('hidden'),
+                loaderContainer: document.getElementById('loaderContainer').classList.contains('hidden')
+            };
+            debugInfo.innerHTML = `
+                <div>Window: ${info.windowSize}</div>
+                <div>Auth Hidden: ${info.authContainer}</div>
+                <div>Main Hidden: ${info.mainContainer}</div>
+                <div>Loader Hidden: ${info.loaderContainer}</div>
+            `;
+        }
+        setInterval(updateDebugInfo, 1000);
+    </script>
 
     <script src="js/supabase-config.js"></script>
     <script src="js/auth.js"></script>

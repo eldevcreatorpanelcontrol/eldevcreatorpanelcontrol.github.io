@@ -48,6 +48,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     googleAuthBtn.addEventListener('click', async () => {
         try {
+            console.log('Инициируем вход через Google...');
+            console.log('Redirect URL:', 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback');
+            
             const { data, error } = await supabaseService.client.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
@@ -56,7 +59,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             if (error) throw error;
+            console.log('Успешный запрос OAuth:', data);
         } catch (error) {
+            console.error('Ошибка входа через Google:', error);
             showAuthError('Ошибка входа через Google: ' + error.message);
         }
     });
@@ -114,21 +119,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function redirectToMainPage() {
-        // Перенаправляем на главную страницу твоего сайта
         const mainPageUrl = 'https://eldevcreatorpanelcontrol.github.io';
+        console.log('Перенаправляем на главную страницу:', mainPageUrl);
         window.location.href = mainPageUrl;
     }
 
     async function handleOAuthCallback() {
         try {
+            console.log('Обрабатываем OAuth callback...');
             const { data, error } = await supabaseService.client.auth.getSession();
             
             if (error) throw error;
 
             if (data.session) {
+                console.log('Сессия получена:', data.session);
                 const user = data.session.user;
 
                 if (user.email !== 'eldevcreator@gmail.com') {
+                    console.log('Пользователь не соответствует email:', user.email);
                     await supabaseService.signOut();
                     localStorage.removeItem('sb-auth-token');
                     showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
@@ -140,8 +148,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 mainContainer.classList.remove('hidden');
                 updateUserInfo(user);
 
-                // Перенаправляем на главную страницу
                 redirectToMainPage();
+            } else {
+                console.log('Сессия не получена.');
             }
         } catch (error) {
             console.error('Ошибка обработки OAuth:', error);

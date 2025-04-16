@@ -336,7 +336,6 @@ header {
     }
 }
 
-
 .auth-container {
     display: flex;
     align-items: center;
@@ -441,61 +440,61 @@ header {
 
 /* Light Theme */
 body.light-theme {
-    background-color: #f5f7fa; /* Мягкий светло-серый фон */
-    color: #333; /* Тёмный текст для лучшей читаемости */
+    background-color: #f5f7fa;
+    color: #333;
 }
 
 body.light-theme .sidebar,
 body.light-theme .content,
 body.light-theme .auth-box,
 body.light-theme .modal-content {
-    background-color: #ffffff; /* Чисто белый фон для панелей */
+    background-color: #ffffff;
     color: #333;
-    border: 1px solid #e0e4e8; /* Лёгкая серая граница */
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Мягкая тень для глубины */
+    border: 1px solid #e0e4e8;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
 body.light-theme .nav-link {
-    color: #555; /* Более мягкий цвет текста в меню */
+    color: #555;
 }
 
 body.light-theme .nav-link:hover, 
 body.light-theme .nav-link.active {
-    background-color: #e6e9ff; /* Лёгкий голубой фон при наведении */
-    color: #6c5ce7; /* Основной акцентный цвет */
+    background-color: #e6e9ff;
+    color: #6c5ce7;
 }
 
 body.light-theme .user-card {
-    background-color: #f9faff; /* Очень светлый голубоватый фон */
+    background-color: #f9faff;
     border-color: #e0e4e8;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 body.light-theme .user-card:hover {
     transform: translateY(-5px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1); /* Более заметная тень при наведении */
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
 }
 
 body.light-theme .form-control {
-    background-color: #f7f9fc; /* Светлый фон для полей ввода */
-    border-color: #d1d5db; /* Лёгкая серая граница */
+    background-color: #f7f9fc;
+    border-color: #d1d5db;
     color: #333;
 }
 
 body.light-theme .form-control:focus {
-    border-color: #6c5ce7; /* Акцентный цвет при фокусе */
-    box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1); /* Лёгкая тень вокруг поля */
+    border-color: #6c5ce7;
+    box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
 }
 
 body.light-theme .auth-divider::before,
 body.light-theme .auth-divider::after {
-    background-color: #e0e4e8; /* Лёгкая серая линия */
+    background-color: #e0e4e8;
 }
 
 body.light-theme .btn-primary {
     background-color: #6c5ce7;
     color: #fff;
-    box-shadow: 0 2px 8px rgba(108, 92, 231, 0.2); /* Тень для кнопки */
+    box-shadow: 0 2px 8px rgba(108, 92, 231, 0.2);
 }
 
 body.light-theme .btn-primary:hover {
@@ -505,9 +504,56 @@ body.light-theme .btn-primary:hover {
 
 body.light-theme .modal-content {
     background-color: #fff;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); /* Более выразительная тень для модального окна */
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
 body.light-theme .user-icon {
-    background-color: rgba(108, 92, 231, 0.1); /* Лёгкий акцентный фон для иконок */
+    background-color: rgba(108, 92, 231, 0.1);
+}
+
+/* Анимации для плавного появления/исчезновения */
+.auth-container, .container {
+    opacity: 0;
+    transition: opacity 0.5s ease-in-out;
+}
+
+.auth-container.visible, .container.visible {
+    opacity: 1;
+}
+
+/* Стили для прелоадера */
+.loader-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: var(--darker);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.loader-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.loader {
+    width: 60px;
+    height: 60px;
+    border: 6px solid var(--primary);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
 }

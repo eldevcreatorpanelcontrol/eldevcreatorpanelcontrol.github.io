@@ -15,23 +15,106 @@ document.addEventListener('DOMContentLoaded', () => {
     const supabaseService = window.supabaseService || new SupabaseService();
     window.supabaseService = supabaseService;
 
-    // Изначально скрываем контейнеры авторизации и главный
-    authContainer.classList.add('hidden');
-    mainContainer.classList.add('hidden');
+    function showAuthContainer() {
+        // Сначала удаляем класс hidden
+        authContainer.classList.remove('hidden');
+        mainContainer.classList.add('hidden');
+        // Даем время браузеру обработать изменение display
+        requestAnimationFrame(() => {
+            authContainer.style.opacity = '1';
+            authContainer.style.transform = 'none';
+        });
+    }
 
-    // Показываем загрузку
-    loaderContainer.classList.remove('hidden');
+    function showMainContainer(user) {
+        // Сначала удаляем класс hidden
+        mainContainer.classList.remove('hidden');
+        authContainer.classList.add('hidden');
+        // Даем время браузеру обработать изменение display
+        requestAnimationFrame(() => {
+            mainContainer.style.opacity = '1';
+            mainContainer.style.transform = 'none';
+            updateUserInfo(user);
+        });
+    }
 
-    togglePassword.addEventListener('click', () => {
-        if (authPassword.type === 'password') {
-            authPassword.type = 'text';
-            togglePassword.classList.replace('fa-eye', 'fa-eye-slash');
-        } else {
-            authPassword.type = 'password';
-            togglePassword.classList.replace('fa-eye-slash', 'fa-eye');
+    function hideLoader() {
+        loaderContainer.style.opacity = '0';
+        loaderContainer.style.visibility = 'hidden';
+        setTimeout(() => {
+            loaderContainer.classList.add('hidden');
+        }, 500);
+    }
+
+    async function initializeAuth() {
+        try {
+            // Проверяем, не находимся ли мы уже на целевой странице
+            const currentUrl = window.location.href;
+            const targetUrl = 'https://eldevcreatorpanelcontrol.github.io';
+            
+            if (currentUrl.includes(targetUrl)) {
+                hideLoader();
+                return;
+            }
+
+            // Имитируем минимальное время загрузки для лучшего UX
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
+            const { data: sessionData, error: sessionError } = await supabaseService.client.auth.getSession();
+            
+            if (sessionError) throw sessionError;
+
+            let user = null;
+            let token = localStorage.getItem('sb-auth-token');
+
+            if (sessionData.session) {
+                user = sessionData.session.user;
+                token = sessionData.session.access_token;
+                localStorage.setItem('sb-auth-token', token);
+            } else if (token) {
+                const { data: userData, error: userError } = await supabaseService.client.auth.getUser(token);
+                if (userError) throw userError;
+                user = userData.user;
+            }
+
+            hideLoader();
+
+            if (user && user.email === 'eldevcreator@gmail.com') {
+                showMainContainer(user);
+            } else {
+                showAuthContainer();
+                if (user) {
+                    await supabaseService.signOut();
+                    localStorage.removeItem('sb-auth-token');
+                    showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
+                }
+            }
+        } catch (error) {
+            console.error('Ошибка инициализации авторизации:', error);
+            localStorage.removeItem('sb-auth-token');
+            hideLoader();
+            showAuthContainer();
         }
-    });
+    }
 
+    function updateUserInfo(user) {
+        if (!user) return;
+        const name = user.user_metadata?.full_name || user.email.split('@')[0];
+        const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
+        
+        userName.textContent = name;
+        userAvatar.textContent = initials.slice(0, 2);
+    }
+
+    function showAuthError(message) {
+        authError.textContent = message || 'Неверные учетные данные!';
+        authError.style.display = 'block';
+        setTimeout(() => {
+            authError.style.display = 'none';
+        }, 3000);
+    }
+
+    // Обработчики событий
     authForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const email = document.getElementById('authEmail').value;
@@ -57,12 +140,11 @@ document.addEventListener('DOMContentLoaded', () => {
     googleAuthBtn.addEventListener('click', async () => {
         try {
             console.log('Инициируем вход через Google...');
-            console.log('Redirect URL:', 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback');
             
             const { data, error } = await supabaseService.client.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback'
+                    redirectTo: window.location.origin
                 }
             });
             
@@ -85,112 +167,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function showAuthContainer() {
-        mainContainer.classList.remove('visible');
-        setTimeout(() => {
-            mainContainer.classList.add('hidden');
-            authContainer.classList.remove('hidden');
-            setTimeout(() => {
-                authContainer.classList.add('visible');
-            }, 50);
-        }, 300);
-    }
-
-    function showMainContainer(user) {
-        authContainer.classList.remove('visible');
-        setTimeout(() => {
-            authContainer.classList.add('hidden');
-            mainContainer.classList.remove('hidden');
-            setTimeout(() => {
-                mainContainer.classList.add('visible');
-                setTimeout(() => {
-                    redirectToMainPage();
-                }, 500);
-            }, 50);
-        }, 300);
-        updateUserInfo(user);
-    }
-
-    async function initializeAuth() {
-        try {
-            // Проверяем, не находимся ли мы уже на целевой странице
-            const currentUrl = window.location.href;
-            const targetUrl = 'https://eldevcreatorpanelcontrol.github.io';
-            
-            if (currentUrl.includes(targetUrl)) {
-                loaderContainer.classList.add('hidden');
-                return;
-            }
-
-            // Имитируем минимальное время загрузки для лучшего UX
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            const { data: sessionData, error: sessionError } = await supabaseService.client.auth.getSession();
-            
-            if (sessionError) throw sessionError;
-
-            let user = null;
-            let token = localStorage.getItem('sb-auth-token');
-
-            if (sessionData.session) {
-                user = sessionData.session.user;
-                token = sessionData.session.access_token;
-                localStorage.setItem('sb-auth-token', token);
-            } else if (token) {
-                const { data: userData, error: userError } = await supabaseService.client.auth.getUser(token);
-                if (userError) throw userError;
-                user = userData.user;
-            }
-
-            // Плавно скрываем загрузку
-            loaderContainer.classList.add('hidden');
-
-            if (user && user.email === 'eldevcreator@gmail.com') {
-                showMainContainer(user);
-            } else {
-                showAuthContainer();
-                if (user) {
-                    await supabaseService.signOut();
-                    localStorage.removeItem('sb-auth-token');
-                    showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
-                }
-            }
-        } catch (error) {
-            console.error('Ошибка инициализации авторизации:', error);
-            localStorage.removeItem('sb-auth-token');
-            loaderContainer.classList.add('hidden');
-            showAuthContainer();
+    togglePassword.addEventListener('click', () => {
+        if (authPassword.type === 'password') {
+            authPassword.type = 'text';
+            togglePassword.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            authPassword.type = 'password';
+            togglePassword.classList.replace('fa-eye-slash', 'fa-eye');
         }
-    }
+    });
 
-    function updateUserInfo(user) {
-        const name = user.user_metadata?.full_name || user.email.split('@')[0];
-        const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
-        
-        userName.textContent = name;
-        userAvatar.textContent = initials.slice(0, 2);
-    }
-
-    function showAuthError(message) {
-        authError.textContent = message || 'Неверные учетные данные!';
-        authError.style.display = 'block';
-        setTimeout(() => {
-            authError.style.display = 'none';
-        }, 3000);
-    }
-
-    function redirectToMainPage() {
-        const currentUrl = window.location.href;
-        const targetUrl = 'https://eldevcreatorpanelcontrol.github.io';
-        
-        // Проверяем, что мы еще не на целевой странице
-        if (!currentUrl.includes(targetUrl)) {
-            console.log('Перенаправляем на главную страницу:', targetUrl);
-            // Используем replace вместо href для предотвращения проблем с историей браузера
-            window.location.replace(targetUrl);
-        }
-    }
-
-    // Инициируем проверку авторизации
+    // Запускаем инициализацию
     initializeAuth();
 });

@@ -2,10 +2,20 @@ class App {
     constructor() {
         this.supabaseService = new SupabaseService();
         this.currentUser = null;
+        this.modals = {};
         this.init();
     }
 
     init() {
+        // Ждем полной загрузки DOM
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.initializeApp());
+        } else {
+            this.initializeApp();
+        }
+    }
+
+    initializeApp() {
         this.initModals();
         this.initNavigation();
         this.loadUsers();
@@ -30,73 +40,201 @@ class App {
     }
 
     initModals() {
-        // Основная форма создания пользователя
-        document.getElementById('createUserBtn').addEventListener('click', () => {
-            this.toggleModal('userModal', true);
+        // Инициализация всех модальных окон
+        document.querySelectorAll('.modal').forEach(modal => {
+            const modalId = modal.id;
+            this.modals[modalId] = {
+                element: modal,
+                isOpen: false
+            };
+
+            // Добавляем обработчик клика вне модального окна
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.toggleModal(modalId, false);
+                }
+            });
+
+            // Добавляем обработчик клавиши Escape
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && this.modals[modalId].isOpen) {
+                    this.toggleModal(modalId, false);
+                }
+            });
         });
 
-        // Формы для разных типов пользователей
-        document.querySelectorAll('.open-modal').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const userType = btn.dataset.type;
-                document.getElementById('userType').value = userType;
+        // Основная кнопка создания пользователя
+        const createUserBtn = document.getElementById('createUserBtn');
+        if (createUserBtn) {
+            createUserBtn.addEventListener('click', () => {
                 this.toggleModal('userModal', true);
             });
-        });
+        }
 
-        document.querySelectorAll('.close-modal').forEach(btn => {
-            btn.addEventListener('click', () => {
-                this.toggleModal('userModal', false);
+        // Кнопки для разных типов пользователей
+        document.querySelectorAll('.open-modal').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const userType = btn.dataset.type;
+                const userTypeInput = document.getElementById('userType');
+                if (userTypeInput) {
+                    userTypeInput.value = userType;
+                }
+                this.toggleModal('userModal', true);
+                this.updateModalTitle(userType);
             });
         });
 
-        document.getElementById('userForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await this.createUser();
+        // Кнопки закрытия
+        document.querySelectorAll('.close-modal').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const modal = btn.closest('.modal');
+                if (modal) {
+                    this.toggleModal(modal.id, false);
+                }
+            });
         });
+
+        // Обработка формы
+        const userForm = document.getElementById('userForm');
+        if (userForm) {
+            userForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.createUser();
+            });
+        }
+    }
+
+    updateModalTitle(userType) {
+        const modalTitle = document.querySelector('.modal-title');
+        if (modalTitle) {
+            const titles = {
+                student: 'Создание нового ученика',
+                teacher: 'Создание нового учителя',
+                assistant: 'Создание нового помощника',
+                admin: 'Создание нового администратора'
+            };
+            modalTitle.textContent = titles[userType] || 'Создание нового пользователя';
+        }
     }
 
     toggleModal(modalId, show) {
-        const modal = document.getElementById(modalId);
-        modal.classList.toggle('hidden', !show);
+        const modalData = this.modals[modalId];
+        if (!modalData) return;
+
+        const { element } = modalData;
+        const form = element.querySelector('form');
+
         if (show) {
-            modal.classList.add('active');
+            // Показываем модальное окно
+            element.classList.remove('hidden');
+            setTimeout(() => element.classList.add('active'), 10);
+            this.modals[modalId].isOpen = true;
+            
+            // Фокус на первое поле ввода
+            const firstInput = element.querySelector('input:not([type="hidden"])');
+            if (firstInput) {
+                firstInput.focus();
+            }
         } else {
-            modal.classList.remove('active');
+            // Скрываем модальное окно
+            element.classList.remove('active');
+            setTimeout(() => element.classList.add('hidden'), 300);
+            this.modals[modalId].isOpen = false;
+            
+            // Сброс формы
+            if (form) {
+                form.reset();
+            }
         }
     }
 
     async createUser() {
-        const user = {
-            email: document.getElementById('userEmail').value,
-            password: document.getElementById('userPassword').value,
-            confirmPassword: document.getElementById('confirmPassword').value,
-            fullName: document.getElementById('fullName').value,
-            username: document.getElementById('username').value,
-            userType: document.getElementById('userType').value
+        const form = document.getElementById('userForm');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        
+        // Получаем все значения формы
+        const formData = {
+            email: document.getElementById('userEmail')?.value,
+            password: document.getElementById('userPassword')?.value,
+            confirmPassword: document.getElementById('confirmPassword')?.value,
+            fullName: document.getElementById('fullName')?.value,
+            username: document.getElementById('username')?.value,
+            userType: document.getElementById('userType')?.value
         };
 
-        if (user.password !== user.confirmPassword) {
-            alert('Пароли не совпадают!');
+        // Валидация
+        if (!this.validateForm(formData)) {
             return;
         }
 
         try {
+            // Блокируем кнопку и показываем загрузку
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Создание...';
+            }
+
             const createdUser = await this.supabaseService.createUserWithRole(
-                user.email, 
-                user.password, 
-                user.fullName, 
-                user.userType
+                formData.email,
+                formData.password,
+                formData.fullName,
+                formData.userType
             );
             
-            alert(`Пользователь ${user.fullName} успешно создан!`);
+            this.showNotification('success', `Пользователь ${formData.fullName} успешно создан!`);
             this.toggleModal('userModal', false);
-            document.getElementById('userForm').reset();
             this.loadUsers();
         } catch (error) {
             console.error('Ошибка создания пользователя:', error);
-            alert(`Ошибка: ${error.message}`);
+            this.showNotification('error', `Ошибка: ${error.message}`);
+        } finally {
+            // Возвращаем кнопку в исходное состояние
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-user-plus"></i> Создать пользователя';
+            }
         }
+    }
+
+    validateForm(formData) {
+        if (!formData.email || !formData.password || !formData.confirmPassword || 
+            !formData.fullName || !formData.username || !formData.userType) {
+            this.showNotification('error', 'Пожалуйста, заполните все поля');
+            return false;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+            this.showNotification('error', 'Пароли не совпадают');
+            return false;
+        }
+
+        if (formData.password.length < 6) {
+            this.showNotification('error', 'Пароль должен содержать минимум 6 символов');
+            return false;
+        }
+
+        return true;
+    }
+
+    showNotification(type, message) {
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.innerHTML = `
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+            <span>${message}</span>
+        `;
+        document.body.appendChild(notification);
+
+        // Анимация появления
+        setTimeout(() => notification.classList.add('show'), 10);
+
+        // Автоматическое скрытие
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
     }
 
     async loadUsers() {
@@ -160,6 +298,5 @@ class App {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    new App();
-});
+// Инициализация приложения
+const app = new App();

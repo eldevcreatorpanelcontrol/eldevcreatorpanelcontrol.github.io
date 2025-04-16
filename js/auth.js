@@ -37,10 +37,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (error) throw error;
             
+            localStorage.setItem('sb-auth-token', data.session.access_token);
             authContainer.classList.add('hidden');
             mainContainer.classList.remove('hidden');
             updateUserInfo(data.user);
-            localStorage.setItem('sb-auth-token', data.session.access_token);
         } catch (error) {
             showAuthError(error.message);
         }
@@ -78,27 +78,58 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    async function checkAuth() {
-        const token = localStorage.getItem('sb-auth-token');
-        if (!token) return;
+    async function initializeAuth() {
+        // Показываем страницу входа по умолчанию, пока идёт проверка
+        authContainer.classList.remove('hidden');
+        mainContainer.classList.add('hidden');
 
         try {
-            const { data: { user }, error } = await supabaseService.client.auth.getUser(token);
+            // Проверяем, есть ли сессия (например, после OAuth-редиректа)
+            const { data: sessionData, error: sessionError } = await supabaseService.client.auth.getSession();
             
-            if (error) throw error;
+            if (sessionError) throw sessionError;
 
-            if (user.email !== 'eldevcreator@gmail.com') {
-                localStorage.removeItem('sb-auth-token');
-                showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
-                return;
+            let user = null;
+            let token = localStorage.getItem('sb-auth-token');
+
+            if (sessionData.session) {
+                // Если есть сессия после OAuth
+                user = sessionData.session.user;
+                token = sessionData.session.access_token;
+                localStorage.setItem('sb-auth-token', token);
+            } else if (token) {
+                // Если есть токен в localStorage, проверяем его
+                const { data: userData, error: userError } = await supabaseService.client.auth.getUser(token);
+                if (userError) throw userError;
+                user = userData.user;
             }
-            
-            authContainer.classList.add('hidden');
-            mainContainer.classList.remove('hidden');
-            updateUserInfo(user);
+
+            if (user) {
+                // Проверяем email пользователя
+                if (user.email !== 'eldevcreator@gmail.com') {
+                    await supabaseService.signOut();
+                    localStorage.removeItem('sb-auth-token');
+                    showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
+                    authContainer.classList.remove('hidden');
+                    mainContainer.classList.add('hidden');
+                    return;
+                }
+
+                // Пользователь авторизован, показываем панель
+                authContainer.classList.add('hidden');
+                mainContainer.classList.remove('hidden');
+                updateUserInfo(user);
+                redirectToMainPage();
+            } else {
+                // Нет сессии и токена, показываем страницу входа
+                authContainer.classList.remove('hidden');
+                mainContainer.classList.add('hidden');
+            }
         } catch (error) {
-            console.error('Ошибка проверки авторизации:', error);
+            console.error('Ошибка инициализации авторизации:', error);
             localStorage.removeItem('sb-auth-token');
+            authContainer.classList.remove('hidden');
+            mainContainer.classList.add('hidden');
         }
     }
 
@@ -124,40 +155,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = mainPageUrl;
     }
 
-    async function handleOAuthCallback() {
-        try {
-            console.log('Обрабатываем OAuth callback...');
-            const { data, error } = await supabaseService.client.auth.getSession();
-            
-            if (error) throw error;
-
-            if (data.session) {
-                console.log('Сессия получена:', data.session);
-                const user = data.session.user;
-
-                if (user.email !== 'eldevcreator@gmail.com') {
-                    console.log('Пользователь не соответствует email:', user.email);
-                    await supabaseService.signOut();
-                    localStorage.removeItem('sb-auth-token');
-                    showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
-                    return;
-                }
-
-                localStorage.setItem('sb-auth-token', data.session.access_token);
-                authContainer.classList.add('hidden');
-                mainContainer.classList.remove('hidden');
-                updateUserInfo(user);
-
-                redirectToMainPage();
-            } else {
-                console.log('Сессия не получена.');
-            }
-        } catch (error) {
-            console.error('Ошибка обработки OAuth:', error);
-            showAuthError('Ошибка авторизации: ' + error.message);
-        }
-    }
-
-    checkAuth();
-    handleOAuthCallback();
+    // Инициируем проверку авторизации только один раз
+    initializeAuth();
 });

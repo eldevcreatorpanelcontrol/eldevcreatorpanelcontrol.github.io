@@ -21,15 +21,17 @@ body {
     background-color: var(--dark);
     color: var(--light);
     min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
 }
 
 .container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 20px;
+    width: 100%;
     min-height: 100vh;
-    opacity: 1;
-    transform: none;
+    padding: 20px;
+    background-color: var(--dark);
+    position: relative;
+    z-index: 1;
 }
 
 header {
@@ -340,17 +342,16 @@ header {
 }
 
 .auth-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    background-color: var(--darker);
-    width: 100%;
     position: fixed;
     top: 0;
     left: 0;
-    opacity: 1;
-    transform: none;
+    width: 100%;
+    height: 100%;
+    background-color: var(--darker);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
 }
 
 .auth-box {
@@ -546,8 +547,7 @@ body.light-theme .user-icon {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    z-index: 2000;
-    transition: opacity 0.5s ease, visibility 0.5s ease;
+    z-index: 20;
 }
 
 .loader-container.hidden {

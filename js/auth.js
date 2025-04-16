@@ -26,13 +26,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Показать контейнер с анимацией
     function showContainer(container) {
         container.classList.remove('hidden');
-        setTimeout(() => container.classList.add('visible'), 50); // Задержка для анимации
+        setTimeout(() => container.classList.add('visible'), 50);
     }
 
     // Скрыть контейнер с анимацией
     function hideContainer(container) {
         container.classList.remove('visible');
-        setTimeout(() => container.classList.add('hidden'), 500); // Синхронизация с длительностью анимации
+        setTimeout(() => container.classList.add('hidden'), 500);
     }
 
     // Переключение видимости пароля

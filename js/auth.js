@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const supabaseService = new SupabaseService();
 
-    // Устанавливаем начальное состояние видимости
+    // Изначально скрываем оба контейнера
     authContainer.classList.add('hidden');
     mainContainer.classList.add('hidden');
 
@@ -42,9 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
             
             localStorage.setItem('sb-auth-token', data.session.access_token);
-            authContainer.classList.add('hidden');
-            mainContainer.classList.remove('hidden');
-            updateUserInfo(data.user);
+            showMainContainer(data.user);
         } catch (error) {
             showAuthError(error.message);
         }
@@ -74,17 +72,34 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await supabaseService.signOut();
             localStorage.removeItem('sb-auth-token');
-            mainContainer.classList.add('hidden');
-            authContainer.classList.remove('hidden');
+            showAuthContainer();
             authForm.reset();
         } catch (error) {
             console.error('Ошибка при выходе:', error);
         }
     });
 
+    function showAuthContainer() {
+        mainContainer.classList.remove('visible');
+        mainContainer.classList.add('hidden');
+        authContainer.classList.remove('hidden');
+        setTimeout(() => {
+            authContainer.classList.add('visible');
+        }, 50);
+    }
+
+    function showMainContainer(user) {
+        authContainer.classList.remove('visible');
+        authContainer.classList.add('hidden');
+        mainContainer.classList.remove('hidden');
+        setTimeout(() => {
+            mainContainer.classList.add('visible');
+        }, 50);
+        updateUserInfo(user);
+    }
+
     async function initializeAuth() {
         try {
-            // Проверяем, есть ли сессия
             const { data: sessionData, error: sessionError } = await supabaseService.client.auth.getSession();
             
             if (sessionError) throw sessionError;
@@ -103,15 +118,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (user && user.email === 'eldevcreator@gmail.com') {
-                // Пользователь авторизован, показываем панель
-                authContainer.classList.add('hidden');
-                mainContainer.classList.remove('hidden');
-                updateUserInfo(user);
+                showMainContainer(user);
                 redirectToMainPage();
             } else {
-                // Нет сессии или неверный email, показываем страницу входа
-                authContainer.classList.remove('hidden');
-                mainContainer.classList.add('hidden');
+                showAuthContainer();
                 if (user) {
                     await supabaseService.signOut();
                     localStorage.removeItem('sb-auth-token');
@@ -121,8 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Ошибка инициализации авторизации:', error);
             localStorage.removeItem('sb-auth-token');
-            authContainer.classList.remove('hidden');
-            mainContainer.classList.add('hidden');
+            showAuthContainer();
         }
     }
 
@@ -148,6 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
         window.location.href = mainPageUrl;
     }
 
-    // Инициируем проверку авторизации только один раз
+    // Инициируем проверку авторизации
     initializeAuth();
 });

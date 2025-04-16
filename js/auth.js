@@ -49,12 +49,13 @@ document.addEventListener('DOMContentLoaded', () => {
     googleAuthBtn.addEventListener('click', async () => {
         try {
             console.log('Инициируем вход через Google...');
-            console.log('Redirect URL:', 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback');
+            const redirectTo = `${window.location.origin}/auth/v1/callback`;
+            console.log('Redirect URL:', redirectTo);
             
             const { data, error } = await supabaseService.client.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback'
+                    redirectTo: redirectTo
                 }
             });
             

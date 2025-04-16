@@ -1,156 +1,52 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const authForm = document.getElementById('authForm');
-    const authContainer = document.getElementById('authContainer');
-    const mainContainer = document.getElementById('mainContainer');
-    const authError = document.getElementById('authError');
-    const logoutBtn = document.getElementById('logoutBtn');
-    const togglePassword = document.getElementById('togglePassword');
-    const authPassword = document.getElementById('authPassword');
-    const googleAuthBtn = document.getElementById('googleAuthBtn');
-    const userAvatar = document.getElementById('userAvatar');
-    const userName = document.getElementById('userName');
+class SupabaseService {
+  constructor() {
+    this.client = supabase.createClient(
+      'https://wmjejaorufcvbmdhxsjy.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtamVqYW9ydWZjdmJtZGh4c2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3NDEzNzIsImV4cCI6MjA2MDMxNzM3Mn0.oHdXpUC1eIuLBelJZsNFZPq2Q3SLOGwxBfntGAe4jxw'
+    );
+  }
 
-    const supabaseService = new SupabaseService();
+  async signIn(email, password) {
+    return await this.client.auth.signInWithPassword({ email, password });
+  }
 
-    togglePassword.addEventListener('click', () => {
-        if (authPassword.type === 'password') {
-            authPassword.type = 'text';
-            togglePassword.classList.replace('fa-eye', 'fa-eye-slash');
-        } else {
-            authPassword.type = 'password';
-            togglePassword.classList.replace('fa-eye-slash', 'fa-eye');
-        }
+  async signOut() {
+    return await this.client.auth.signOut();
+  }
+
+  async createUserWithRole(email, password, fullName, userType) {
+    const { data: authData, error: authError } = await this.client.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { full_name: fullName, user_role: userType }
+      }
     });
+    
+    if (authError) throw authError;
 
-    authForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('authEmail').value;
-        const password = authPassword.value;
+    const { error: dbError } = await this.client
+      .from('users')
+      .insert({
+        id: authData.user.id,
+        email,
+        full_name: fullName,
+        user_type: userType
+      });
 
-        if (email !== 'eldevcreator@gmail.com') {
-            showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
-            return;
-        }
+    if (dbError) throw dbError;
 
-        try {
-            const { data, error } = await supabaseService.signIn(email, password);
-            
-            if (error) throw error;
-            
-            localStorage.setItem('sb-auth-token', data.session.access_token);
-            authContainer.classList.add('hidden');
-            mainContainer.classList.remove('hidden');
-            updateUserInfo(data.user);
-        } catch (error) {
-            showAuthError(error.message);
-        }
-    });
+    return authData.user;
+  }
 
-    googleAuthBtn.addEventListener('click', async () => {
-        try {
-            console.log('Инициируем вход через Google...');
-            console.log('Redirect URL:', 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback');
-            
-            const { data, error } = await supabaseService.client.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback'
-                }
-            });
-            
-            if (error) throw error;
-            console.log('Успешный запрос OAuth:', data);
-        } catch (error) {
-            console.error('Ошибка входа через Google:', error);
-            showAuthError('Ошибка входа через Google: ' + error.message);
-        }
-    });
-
-    logoutBtn.addEventListener('click', async () => {
-        try {
-            await supabaseService.signOut();
-            localStorage.removeItem('sb-auth-token');
-            mainContainer.classList.add('hidden');
-            authContainer.classList.remove('hidden');
-            authForm.reset();
-        } catch (error) {
-            console.error('Ошибка при выходе:', error);
-        }
-    });
-
-    async function initializeAuth() {
-        // Сначала скрываем обе панели
-        authContainer.classList.add('hidden');
-        mainContainer.classList.add('hidden');
-
-        try {
-            // Проверяем, есть ли сессия (например, после OAuth-редиректа)
-            const { data: sessionData, error: sessionError } = await supabaseService.client.auth.getSession();
-            
-            if (sessionError) throw sessionError;
-
-            let user = null;
-            let token = localStorage.getItem('sb-auth-token');
-
-            if (sessionData.session) {
-                // Если есть сессия после OAuth
-                user = sessionData.session.user;
-                token = sessionData.session.access_token;
-                localStorage.setItem('sb-auth-token', token);
-            } else if (token) {
-                // Если есть токен в localStorage, проверяем его
-                const { data: userData, error: userError } = await supabaseService.client.auth.getUser(token);
-                if (userError) throw userError;
-                user = userData.user;
-            }
-
-            if (user) {
-                // Проверяем email пользователя
-                if (user.email !== 'eldevcreator@gmail.com') {
-                    await supabaseService.signOut();
-                    localStorage.removeItem('sb-auth-token');
-                    showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
-                    authContainer.classList.remove('hidden');
-                    return;
-                }
-
-                // Пользователь авторизован, показываем панель
-                mainContainer.classList.remove('hidden');
-                updateUserInfo(user);
-                redirectToMainPage();
-            } else {
-                // Нет сессии и токена, показываем страницу входа
-                authContainer.classList.remove('hidden');
-            }
-        } catch (error) {
-            console.error('Ошибка инициализации авторизации:', error);
-            localStorage.removeItem('sb-auth-token');
-            authContainer.classList.remove('hidden');
-        }
-    }
-
-    function updateUserInfo(user) {
-        const name = user.user_metadata?.full_name || user.email.split('@')[0];
-        const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
-        
-        userName.textContent = name;
-        userAvatar.textContent = initials.slice(0, 2);
-    }
-
-    function showAuthError(message) {
-        authError.textContent = message || 'Неверные учетные данные!';
-        authError.style.display = 'block';
-        setTimeout(() => {
-            authError.style.display = 'none';
-        }, 3000);
-    }
-
-    function redirectToMainPage() {
-        const mainPageUrl = 'https://eldevcreatorpanelcontrol.github.io';
-        console.log('Перенаправляем на главную страницу:', mainPageUrl);
-        window.location.href = mainPageUrl;
-    }
-
-    // Инициируем проверку авторизации только один раз
-    initializeAuth();
-});
+  async getUsers(page = 1, limit = 10) {
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+    
+    return await this.client
+      .from('users')
+      .select('*', { count: 'exact' })
+      .range(from, to)
+      .order('created_at', { ascending: false });
+  }
+}

@@ -238,29 +238,31 @@ header {
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0,0,0,0.8);
+    background-color: rgba(0, 0, 0, 0.5);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
     opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .modal.active {
     opacity: 1;
-    pointer-events: all;
+    visibility: visible;
 }
 
 .modal-content {
     background-color: var(--darker);
-    border-radius: 10px;
+    border-radius: 12px;
     width: 100%;
     max-width: 500px;
     padding: 30px;
+    position: relative;
     transform: translateY(20px);
     transition: transform 0.3s ease;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
 }
 
 .modal.active .modal-content {
@@ -280,42 +282,102 @@ header {
 }
 
 .close-modal {
+    position: absolute;
+    top: 20px;
+    right: 20px;
     background: none;
     border: none;
     color: var(--gray);
     font-size: 24px;
     cursor: pointer;
     transition: color 0.3s ease;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
 }
 
 .close-modal:hover {
     color: var(--light);
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .form-group {
-    margin-bottom: 20px;
+    position: relative;
+    margin-bottom: 25px;
 }
 
 .form-group label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 500;
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: var(--darker);
+    padding: 0 5px;
+    color: var(--gray);
+    transition: all 0.3s ease;
+    pointer-events: none;
 }
 
 .form-control {
     width: 100%;
     padding: 12px 15px;
-    background-color: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.1);
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     color: var(--light);
     font-size: 16px;
-    transition: border-color 0.3s ease;
+    transition: all 0.3s ease;
 }
 
 .form-control:focus {
     outline: none;
     border-color: var(--primary);
+    background-color: rgba(255, 255, 255, 0.08);
+    box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.1);
+}
+
+.form-control:focus + label,
+.form-control:not(:placeholder-shown) + label {
+    top: 0;
+    font-size: 12px;
+    color: var(--primary);
+}
+
+.btn-submit {
+    width: 100%;
+    padding: 14px;
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-submit:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 5px 15px rgba(108, 92, 231, 0.3);
+}
+
+.btn-submit:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-submit i {
+    font-size: 18px;
 }
 
 @media (max-width: 992px) {
@@ -335,7 +397,6 @@ header {
         grid-template-columns: 1fr;
     }
 }
-
 
 .auth-container {
     display: flex;
@@ -545,4 +606,46 @@ body.light-theme .user-icon {
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
+}
+
+/* Уведомления */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    border-radius: 8px;
+    background-color: var(--darker);
+    color: var(--light);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    z-index: 1100;
+}
+
+.notification.show {
+    transform: translateX(0);
+}
+
+.notification i {
+    font-size: 20px;
+}
+
+.notification.success {
+    border-left: 4px solid var(--success);
+}
+
+.notification.success i {
+    color: var(--success);
+}
+
+.notification.error {
+    border-left: 4px solid var(--danger);
+}
+
+.notification.error i {
+    color: var(--danger);
 }

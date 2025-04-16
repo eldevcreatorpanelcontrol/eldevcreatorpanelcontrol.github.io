@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const password = authPassword.value;
 
         if (email !== 'eldevcreator@gmail.com') {
-            showAuthError(i18next.t('errors.accessDenied'));
+            showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
             return;
         }
 
@@ -49,13 +49,12 @@ document.addEventListener('DOMContentLoaded', () => {
     googleAuthBtn.addEventListener('click', async () => {
         try {
             console.log('Инициируем вход через Google...');
-            const redirectTo = `${window.location.origin}/auth/v1/callback`;
-            console.log('Redirect URL:', redirectTo);
+            console.log('Redirect URL:', 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback');
             
             const { data, error } = await supabaseService.client.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: redirectTo
+                    redirectTo: 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback'
                 }
             });
             
@@ -63,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log('Успешный запрос OAuth:', data);
         } catch (error) {
             console.error('Ошибка входа через Google:', error);
-            showAuthError(i18next.t('errors.googleSignInError') + error.message);
+            showAuthError('Ошибка входа через Google: ' + error.message);
         }
     });
 
@@ -80,10 +79,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function initializeAuth() {
+        // Показываем страницу входа по умолчанию, пока идёт проверка
         authContainer.classList.remove('hidden');
         mainContainer.classList.add('hidden');
 
         try {
+            // Проверяем, есть ли сессия (например, после OAuth-редиректа)
             const { data: sessionData, error: sessionError } = await supabaseService.client.auth.getSession();
             
             if (sessionError) throw sessionError;
@@ -92,30 +93,35 @@ document.addEventListener('DOMContentLoaded', () => {
             let token = localStorage.getItem('sb-auth-token');
 
             if (sessionData.session) {
+                // Если есть сессия после OAuth
                 user = sessionData.session.user;
                 token = sessionData.session.access_token;
                 localStorage.setItem('sb-auth-token', token);
             } else if (token) {
+                // Если есть токен в localStorage, проверяем его
                 const { data: userData, error: userError } = await supabaseService.client.auth.getUser(token);
                 if (userError) throw userError;
                 user = userData.user;
             }
 
             if (user) {
+                // Проверяем email пользователя
                 if (user.email !== 'eldevcreator@gmail.com') {
                     await supabaseService.signOut();
                     localStorage.removeItem('sb-auth-token');
-                    showAuthError(i18next.t('errors.accessDenied'));
+                    showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
                     authContainer.classList.remove('hidden');
                     mainContainer.classList.add('hidden');
                     return;
                 }
 
+                // Пользователь авторизован, показываем панель
                 authContainer.classList.add('hidden');
                 mainContainer.classList.remove('hidden');
                 updateUserInfo(user);
                 redirectToMainPage();
             } else {
+                // Нет сессии и токена, показываем страницу входа
                 authContainer.classList.remove('hidden');
                 mainContainer.classList.add('hidden');
             }
@@ -136,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showAuthError(message) {
-        authError.textContent = message || i18next.t('errors.invalidCredentials');
+        authError.textContent = message || 'Неверные учетные данные!';
         authError.style.display = 'block';
         setTimeout(() => {
             authError.style.display = 'none';
@@ -144,10 +150,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function redirectToMainPage() {
-        const mainPageUrl = window.location.origin;
+        const mainPageUrl = 'https://eldevcreatorpanelcontrol.github.io';
         console.log('Перенаправляем на главную страницу:', mainPageUrl);
         window.location.href = mainPageUrl;
     }
 
+    // Инициируем проверку авторизации только один раз
     initializeAuth();
 });

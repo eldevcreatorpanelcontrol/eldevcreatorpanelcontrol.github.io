@@ -12,6 +12,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const supabaseService = new SupabaseService();
 
+    // Устанавливаем начальное состояние видимости
+    authContainer.classList.add('hidden');
+    mainContainer.classList.add('hidden');
+
     togglePassword.addEventListener('click', () => {
         if (authPassword.type === 'password') {
             authPassword.type = 'text';
@@ -79,12 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function initializeAuth() {
-        // Показываем страницу входа по умолчанию, пока идёт проверка
-        authContainer.classList.remove('hidden');
-        mainContainer.classList.add('hidden');
-
         try {
-            // Проверяем, есть ли сессия (например, после OAuth-редиректа)
+            // Проверяем, есть ли сессия
             const { data: sessionData, error: sessionError } = await supabaseService.client.auth.getSession();
             
             if (sessionError) throw sessionError;
@@ -93,37 +93,30 @@ document.addEventListener('DOMContentLoaded', () => {
             let token = localStorage.getItem('sb-auth-token');
 
             if (sessionData.session) {
-                // Если есть сессия после OAuth
                 user = sessionData.session.user;
                 token = sessionData.session.access_token;
                 localStorage.setItem('sb-auth-token', token);
             } else if (token) {
-                // Если есть токен в localStorage, проверяем его
                 const { data: userData, error: userError } = await supabaseService.client.auth.getUser(token);
                 if (userError) throw userError;
                 user = userData.user;
             }
 
-            if (user) {
-                // Проверяем email пользователя
-                if (user.email !== 'eldevcreator@gmail.com') {
-                    await supabaseService.signOut();
-                    localStorage.removeItem('sb-auth-token');
-                    showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
-                    authContainer.classList.remove('hidden');
-                    mainContainer.classList.add('hidden');
-                    return;
-                }
-
+            if (user && user.email === 'eldevcreator@gmail.com') {
                 // Пользователь авторизован, показываем панель
                 authContainer.classList.add('hidden');
                 mainContainer.classList.remove('hidden');
                 updateUserInfo(user);
                 redirectToMainPage();
             } else {
-                // Нет сессии и токена, показываем страницу входа
+                // Нет сессии или неверный email, показываем страницу входа
                 authContainer.classList.remove('hidden');
                 mainContainer.classList.add('hidden');
+                if (user) {
+                    await supabaseService.signOut();
+                    localStorage.removeItem('sb-auth-token');
+                    showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
+                }
             }
         } catch (error) {
             console.error('Ошибка инициализации авторизации:', error);

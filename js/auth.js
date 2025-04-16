@@ -9,57 +9,100 @@ document.addEventListener('DOMContentLoaded', () => {
     const googleAuthBtn = document.getElementById('googleAuthBtn');
     const userAvatar = document.getElementById('userAvatar');
     const userName = document.getElementById('userName');
-    const loaderContainer = document.getElementById('loaderContainer');
+    const loadingOverlay = document.getElementById('loadingOverlay');
 
-    // Создаем единственный экземпляр SupabaseService
-    const supabaseService = window.supabaseService || new SupabaseService();
-    window.supabaseService = supabaseService;
+    const supabaseService = new SupabaseService();
 
-    function showAuthContainer() {
-        // Сначала удаляем класс hidden
-        authContainer.classList.remove('hidden');
-        mainContainer.classList.add('hidden');
-        // Даем время браузеру обработать изменение display
-        requestAnimationFrame(() => {
-            authContainer.style.opacity = '1';
-            authContainer.style.transform = 'none';
-        });
+    function showLoading() {
+        loadingOverlay.classList.add('visible');
     }
 
-    function showMainContainer(user) {
-        // Сначала удаляем класс hidden
-        mainContainer.classList.remove('hidden');
-        authContainer.classList.add('hidden');
-        // Даем время браузеру обработать изменение display
-        requestAnimationFrame(() => {
-            mainContainer.style.opacity = '1';
-            mainContainer.style.transform = 'none';
-            updateUserInfo(user);
-        });
+    function hideLoading() {
+        loadingOverlay.classList.remove('visible');
     }
 
-    function hideLoader() {
-        loaderContainer.style.opacity = '0';
-        loaderContainer.style.visibility = 'hidden';
-        setTimeout(() => {
-            loaderContainer.classList.add('hidden');
-        }, 500);
-    }
+    togglePassword.addEventListener('click', () => {
+        if (authPassword.type === 'password') {
+            authPassword.type = 'text';
+            togglePassword.classList.replace('fa-eye', 'fa-eye-slash');
+        } else {
+            authPassword.type = 'password';
+            togglePassword.classList.replace('fa-eye-slash', 'fa-eye');
+        }
+    });
+
+    authForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showLoading();
+        const email = document.getElementById('authEmail').value;
+        const password = authPassword.value;
+
+        if (email !== 'eldevcreator@gmail.com') {
+            hideLoading();
+            showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
+            return;
+        }
+
+        try {
+            const { data, error } = await supabaseService.signIn(email, password);
+            
+            if (error) throw error;
+            
+            localStorage.setItem('sb-auth-token', data.session.access_token);
+            authContainer.classList.add('hidden');
+            mainContainer.classList.remove('hidden');
+            updateUserInfo(data.user);
+        } catch (error) {
+            showAuthError(error.message);
+        } finally {
+            hideLoading();
+        }
+    });
+
+    googleAuthBtn.addEventListener('click', async () => {
+        showLoading();
+        try {
+            console.log('Инициируем вход через Google...');
+            console.log('Redirect URL:', 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback');
+            
+            const { data, error } = await supabaseService.client.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback'
+                }
+            });
+            
+            if (error) throw error;
+            console.log('Успешный запрос OAuth:', data);
+        } catch (error) {
+            console.error('Ошибка входа через Google:', error);
+            showAuthError('Ошибка входа через Google: ' + error.message);
+            hideLoading();
+        }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+        showLoading();
+        try {
+            await supabaseService.signOut();
+            localStorage.removeItem('sb-auth-token');
+            mainContainer.classList.add('hidden');
+            authContainer.classList.remove('hidden');
+            authForm.reset();
+        } catch (error) {
+            console.error('Ошибка при выходе:', error);
+        } finally {
+            hideLoading();
+        }
+    });
 
     async function initializeAuth() {
+        showLoading();
+        // Скрываем оба контейнера изначально
+        authContainer.classList.add('hidden');
+        mainContainer.classList.add('hidden');
+
         try {
-            // Проверяем, не находимся ли мы уже на целевой странице
-            const currentUrl = window.location.href;
-            const targetUrl = 'https://eldevcreatorpanelcontrol.github.io';
-            
-            if (currentUrl.includes(targetUrl)) {
-                hideLoader();
-                return;
-            }
-
-            // Имитируем минимальное время загрузки для лучшего UX
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
             const { data: sessionData, error: sessionError } = await supabaseService.client.auth.getSession();
             
             if (sessionError) throw sessionError;
@@ -77,28 +120,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 user = userData.user;
             }
 
-            hideLoader();
-
-            if (user && user.email === 'eldevcreator@gmail.com') {
-                showMainContainer(user);
-            } else {
-                showAuthContainer();
-                if (user) {
+            if (user) {
+                if (user.email !== 'eldevcreator@gmail.com') {
                     await supabaseService.signOut();
                     localStorage.removeItem('sb-auth-token');
                     showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
+                    authContainer.classList.remove('hidden');
+                    return;
                 }
+
+                authContainer.classList.add('hidden');
+                mainContainer.classList.remove('hidden');
+                updateUserInfo(user);
+                redirectToMainPage();
+            } else {
+                authContainer.classList.remove('hidden');
             }
         } catch (error) {
             console.error('Ошибка инициализации авторизации:', error);
             localStorage.removeItem('sb-auth-token');
-            hideLoader();
-            showAuthContainer();
+            authContainer.classList.remove('hidden');
+        } finally {
+            hideLoading();
         }
     }
 
     function updateUserInfo(user) {
-        if (!user) return;
         const name = user.user_metadata?.full_name || user.email.split('@')[0];
         const initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
         
@@ -114,69 +161,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    // Обработчики событий
-    authForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = document.getElementById('authEmail').value;
-        const password = authPassword.value;
+    function redirectToMainPage() {
+        const mainPageUrl = 'https://eldevcreatorpanelcontrol.github.io';
+        console.log('Перенаправляем на главную страницу:', mainPageUrl);
+        window.location.href = mainPageUrl;
+    }
 
-        if (email !== 'eldevcreator@gmail.com') {
-            showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
-            return;
-        }
-
-        try {
-            const { data, error } = await supabaseService.signIn(email, password);
-            
-            if (error) throw error;
-            
-            localStorage.setItem('sb-auth-token', data.session.access_token);
-            showMainContainer(data.user);
-        } catch (error) {
-            showAuthError(error.message);
-        }
-    });
-
-    googleAuthBtn.addEventListener('click', async () => {
-        try {
-            console.log('Инициируем вход через Google...');
-            
-            const { data, error } = await supabaseService.client.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: window.location.origin
-                }
-            });
-            
-            if (error) throw error;
-            console.log('Успешный запрос OAuth:', data);
-        } catch (error) {
-            console.error('Ошибка входа через Google:', error);
-            showAuthError('Ошибка входа через Google: ' + error.message);
-        }
-    });
-
-    logoutBtn.addEventListener('click', async () => {
-        try {
-            await supabaseService.signOut();
-            localStorage.removeItem('sb-auth-token');
-            showAuthContainer();
-            authForm.reset();
-        } catch (error) {
-            console.error('Ошибка при выходе:', error);
-        }
-    });
-
-    togglePassword.addEventListener('click', () => {
-        if (authPassword.type === 'password') {
-            authPassword.type = 'text';
-            togglePassword.classList.replace('fa-eye', 'fa-eye-slash');
-        } else {
-            authPassword.type = 'password';
-            togglePassword.classList.replace('fa-eye-slash', 'fa-eye');
-        }
-    });
-
-    // Запускаем инициализацию
+    // Инициируем проверку авторизации только один раз
     initializeAuth();
 });

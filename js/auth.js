@@ -9,6 +9,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const googleAuthBtn = document.getElementById('googleAuthBtn');
     const userAvatar = document.getElementById('userAvatar');
     const userName = document.getElementById('userName');
+
+    // Создаем единственный экземпляр клиента Supabase
+    const supabase = supabase.createClient(
+        'https://wmjejaorufcvbmdhxsjy.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtamVqYW9ydWZjdmJtZGh4c2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDI5MjIyNDgsImV4cCI6MjAxODQ5ODI0OH0.qA8kqrgIMAR-TNIYo3i-KIL7VV9y9JZN6tZEGwTQB7c'
+    );
+
     const loadingOverlay = document.createElement('div');
     loadingOverlay.id = 'loadingOverlay';
     loadingOverlay.style.cssText = `
@@ -25,8 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     loadingOverlay.innerHTML = '<div class="spinner"></div>';
     document.body.appendChild(loadingOverlay);
-
-    const supabaseService = new SupabaseService();
 
     togglePassword.addEventListener('click', () => {
         if (authPassword.type === 'password') {
@@ -49,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            const { data, error } = await supabaseService.signIn(email, password);
+            const { data, error } = await supabase.signIn(email, password);
             
             if (error) throw error;
             
@@ -65,12 +70,11 @@ document.addEventListener('DOMContentLoaded', () => {
     googleAuthBtn.addEventListener('click', async () => {
         try {
             console.log('Инициируем вход через Google...');
-            console.log('Redirect URL:', 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback');
             
-            const { data, error } = await supabaseService.client.auth.signInWithOAuth({
+            const { data, error } = await supabase.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback'
+                    redirectTo: window.location.origin
                 }
             });
             
@@ -84,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     logoutBtn.addEventListener('click', async () => {
         try {
-            await supabaseService.signOut();
+            await supabase.signOut();
             localStorage.removeItem('sb-auth-token');
             mainContainer.classList.add('hidden');
             authContainer.classList.remove('hidden');
@@ -95,57 +99,34 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function initializeAuth() {
-        // Сначала скрываем обе панели и показываем загрузку
         authContainer.classList.add('hidden');
         mainContainer.classList.add('hidden');
         loadingOverlay.style.display = 'flex';
 
         try {
-            // Проверяем, есть ли сессия (например, после OAuth-редиректа)
-            const { data: sessionData, error: sessionError } = await supabaseService.client.auth.getSession();
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
             
             if (sessionError) throw sessionError;
 
-            let user = null;
-            let token = localStorage.getItem('sb-auth-token');
-
-            if (sessionData.session) {
-                // Если есть сессия после OAuth
-                user = sessionData.session.user;
-                token = sessionData.session.access_token;
-                localStorage.setItem('sb-auth-token', token);
-            } else if (token) {
-                // Если есть токен в localStorage, проверяем его
-                const { data: userData, error: userError } = await supabaseService.client.auth.getUser(token);
-                if (userError) throw userError;
-                user = userData.user;
-            }
-
-            if (user) {
-                // Проверяем email пользователя
+            if (session?.user) {
+                const user = session.user;
+                
                 if (user.email !== 'eldevcreator@gmail.com') {
-                    await supabaseService.signOut();
-                    localStorage.removeItem('sb-auth-token');
+                    await supabase.auth.signOut();
                     showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
                     authContainer.classList.remove('hidden');
-                    loadingOverlay.style.display = 'none';
-                    return;
+                } else {
+                    mainContainer.classList.remove('hidden');
+                    updateUserInfo(user);
+                    redirectToMainPage();
                 }
-
-                // Пользователь авторизован, показываем панель
-                mainContainer.classList.remove('hidden');
-                updateUserInfo(user);
-                loadingOverlay.style.display = 'none';
-                redirectToMainPage();
             } else {
-                // Нет сессии и токена, показываем страницу входа
                 authContainer.classList.remove('hidden');
-                loadingOverlay.style.display = 'none';
             }
         } catch (error) {
             console.error('Ошибка инициализации авторизации:', error);
-            localStorage.removeItem('sb-auth-token');
             authContainer.classList.remove('hidden');
+        } finally {
             loadingOverlay.style.display = 'none';
         }
     }

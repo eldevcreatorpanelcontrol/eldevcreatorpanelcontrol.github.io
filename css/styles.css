@@ -511,3 +511,18 @@ body.light-theme .modal-content {
 body.light-theme .user-icon {
     background-color: rgba(108, 92, 231, 0.1); /* Лёгкий акцентный фон для иконок */
 }
+
+.auth-container, .main-container {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: 0;
+    transform: translateY(-20px);
+}
+
+.auth-container.visible, .main-container.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.hidden {
+    display: none !important;
+}

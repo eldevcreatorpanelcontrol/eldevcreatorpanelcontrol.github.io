@@ -27,6 +27,9 @@ body {
     max-width: 1400px;
     margin: 0 auto;
     padding: 20px;
+    min-height: 100vh;
+    opacity: 1;
+    transform: none;
 }
 
 header {
@@ -336,13 +339,18 @@ header {
     }
 }
 
-
 .auth-container {
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 100vh;
     background-color: var(--darker);
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    opacity: 1;
+    transform: none;
 }
 
 .auth-box {

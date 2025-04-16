@@ -9,12 +9,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const googleAuthBtn = document.getElementById('googleAuthBtn');
     const userAvatar = document.getElementById('userAvatar');
     const userName = document.getElementById('userName');
+    const loaderContainer = document.getElementById('loaderContainer');
 
     const supabaseService = new SupabaseService();
 
-    // Изначально скрываем оба контейнера
+    // Изначально скрываем контейнеры авторизации и главный
     authContainer.classList.add('hidden');
     mainContainer.classList.add('hidden');
+
+    // Показываем загрузку
+    loaderContainer.classList.remove('hidden');
 
     togglePassword.addEventListener('click', () => {
         if (authPassword.type === 'password') {
@@ -81,25 +85,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function showAuthContainer() {
         mainContainer.classList.remove('visible');
-        mainContainer.classList.add('hidden');
-        authContainer.classList.remove('hidden');
         setTimeout(() => {
-            authContainer.classList.add('visible');
-        }, 50);
+            mainContainer.classList.add('hidden');
+            authContainer.classList.remove('hidden');
+            setTimeout(() => {
+                authContainer.classList.add('visible');
+            }, 50);
+        }, 300);
     }
 
     function showMainContainer(user) {
         authContainer.classList.remove('visible');
-        authContainer.classList.add('hidden');
-        mainContainer.classList.remove('hidden');
         setTimeout(() => {
-            mainContainer.classList.add('visible');
-        }, 50);
+            authContainer.classList.add('hidden');
+            mainContainer.classList.remove('hidden');
+            setTimeout(() => {
+                mainContainer.classList.add('visible');
+            }, 50);
+        }, 300);
         updateUserInfo(user);
     }
 
     async function initializeAuth() {
         try {
+            // Имитируем минимальное время загрузки для лучшего UX
+            await new Promise(resolve => setTimeout(resolve, 1000));
+
             const { data: sessionData, error: sessionError } = await supabaseService.client.auth.getSession();
             
             if (sessionError) throw sessionError;
@@ -117,6 +128,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 user = userData.user;
             }
 
+            // Плавно скрываем загрузку
+            loaderContainer.classList.add('hidden');
+
             if (user && user.email === 'eldevcreator@gmail.com') {
                 showMainContainer(user);
                 redirectToMainPage();
@@ -131,6 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Ошибка инициализации авторизации:', error);
             localStorage.removeItem('sb-auth-token');
+            // Плавно скрываем загрузку при ошибке
+            loaderContainer.classList.add('hidden');
             showAuthContainer();
         }
     }

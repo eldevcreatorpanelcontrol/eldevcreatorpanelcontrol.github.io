@@ -11,7 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const userName = document.getElementById('userName');
     const loaderContainer = document.getElementById('loaderContainer');
 
-    const supabaseService = new SupabaseService();
+    // Создаем единственный экземпляр SupabaseService
+    const supabaseService = window.supabaseService || new SupabaseService();
+    window.supabaseService = supabaseService;
 
     // Изначально скрываем контейнеры авторизации и главный
     authContainer.classList.add('hidden');
@@ -101,6 +103,9 @@ document.addEventListener('DOMContentLoaded', () => {
             mainContainer.classList.remove('hidden');
             setTimeout(() => {
                 mainContainer.classList.add('visible');
+                setTimeout(() => {
+                    redirectToMainPage();
+                }, 500);
             }, 50);
         }, 300);
         updateUserInfo(user);
@@ -108,6 +113,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initializeAuth() {
         try {
+            // Проверяем, не находимся ли мы уже на целевой странице
+            const currentUrl = window.location.href;
+            const targetUrl = 'https://eldevcreatorpanelcontrol.github.io';
+            
+            if (currentUrl.includes(targetUrl)) {
+                loaderContainer.classList.add('hidden');
+                return;
+            }
+
             // Имитируем минимальное время загрузки для лучшего UX
             await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -133,7 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (user && user.email === 'eldevcreator@gmail.com') {
                 showMainContainer(user);
-                redirectToMainPage();
             } else {
                 showAuthContainer();
                 if (user) {
@@ -145,7 +158,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Ошибка инициализации авторизации:', error);
             localStorage.removeItem('sb-auth-token');
-            // Плавно скрываем загрузку при ошибке
             loaderContainer.classList.add('hidden');
             showAuthContainer();
         }
@@ -168,9 +180,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function redirectToMainPage() {
-        const mainPageUrl = 'https://eldevcreatorpanelcontrol.github.io';
-        console.log('Перенаправляем на главную страницу:', mainPageUrl);
-        window.location.href = mainPageUrl;
+        const currentUrl = window.location.href;
+        const targetUrl = 'https://eldevcreatorpanelcontrol.github.io';
+        
+        // Проверяем, что мы еще не на целевой странице
+        if (!currentUrl.includes(targetUrl)) {
+            console.log('Перенаправляем на главную страницу:', targetUrl);
+            // Используем replace вместо href для предотвращения проблем с историей браузера
+            window.location.replace(targetUrl);
+        }
     }
 
     // Инициируем проверку авторизации

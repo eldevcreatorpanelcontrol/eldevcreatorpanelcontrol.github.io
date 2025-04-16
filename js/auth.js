@@ -79,8 +79,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function initializeAuth() {
-        // Показываем страницу входа по умолчанию, пока идёт проверка
-        authContainer.classList.remove('hidden');
+        // Сначала скрываем обе панели
+        authContainer.classList.add('hidden');
         mainContainer.classList.add('hidden');
 
         try {
@@ -111,25 +111,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.removeItem('sb-auth-token');
                     showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
                     authContainer.classList.remove('hidden');
-                    mainContainer.classList.add('hidden');
                     return;
                 }
 
                 // Пользователь авторизован, показываем панель
-                authContainer.classList.add('hidden');
                 mainContainer.classList.remove('hidden');
                 updateUserInfo(user);
                 redirectToMainPage();
             } else {
                 // Нет сессии и токена, показываем страницу входа
                 authContainer.classList.remove('hidden');
-                mainContainer.classList.add('hidden');
             }
         } catch (error) {
             console.error('Ошибка инициализации авторизации:', error);
             localStorage.removeItem('sb-auth-token');
             authContainer.classList.remove('hidden');
-            mainContainer.classList.add('hidden');
         }
     }
 

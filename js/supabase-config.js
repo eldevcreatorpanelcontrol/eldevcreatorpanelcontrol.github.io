@@ -1,8 +1,8 @@
 class SupabaseService {
   constructor() {
     this.client = supabase.createClient(
-      'https://wmjejaorufcvbmdhxsjy.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtamVqYW9ydWZjdmJtZGh4c2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3NDEzNzIsImV4cCI6MjA2MDMxNzM3Mn0.oHdXpUC1eIuLBelJZsNFZPq2Q3SLOGwxBfntGAe4jxw'
+      'https://wmjejaorufcvbmdhxsjy.supabase.co', // Замените на ваш URL Supabase
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtamVqYW9ydWZjdmJtZGh4c2p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ3NDEzNzIsImV4cCI6MjA2MDMxNzM3Mn0.oHdXpUC1eIuLBelJZsNFZPq2Q3SLOGwxBfntGAe4jxw'  // Замените на ваш ключ Supabase
     );
   }
 

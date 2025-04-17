@@ -12,14 +12,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingSpinner = document.getElementById('loadingSpinner');
 
     const supabaseService = new SupabaseService();
+    let isAuthenticating = false;
+
+    // Предварительно скрываем контейнеры до проверки авторизации
+    authContainer.style.opacity = '0';
+    mainContainer.style.opacity = '0';
 
     function setLoading(isLoading) {
         if (isLoading) {
-            authContainer.classList.add('loading');
             loadingSpinner.classList.add('visible');
+            authContainer.classList.add('loading');
+            if (isAuthenticating) {
+                authContainer.style.opacity = '0.5';
+            }
         } else {
-            authContainer.classList.remove('loading');
             loadingSpinner.classList.remove('visible');
+            authContainer.classList.remove('loading');
+            authContainer.style.opacity = '1';
+        }
+    }
+
+    function showContainer(container, show) {
+        if (show) {
+            container.classList.remove('hidden');
+            // Используем setTimeout для плавного появления
+            setTimeout(() => {
+                container.style.opacity = '1';
+            }, 50);
+        } else {
+            container.style.opacity = '0';
+            // Ждем окончания анимации перед скрытием
+            setTimeout(() => {
+                container.classList.add('hidden');
+            }, 300);
         }
     }
 
@@ -52,8 +77,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             localStorage.setItem('sb-auth-token', data.session.access_token);
             updateUserInfo(data.user);
-            authContainer.classList.add('hidden');
-            mainContainer.classList.remove('hidden');
+            showContainer(authContainer, false);
+            showContainer(mainContainer, true);
         } catch (error) {
             showAuthError(error.message);
         } finally {
@@ -63,22 +88,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     googleAuthBtn.addEventListener('click', async () => {
         try {
+            isAuthenticating = true;
             setLoading(true);
-            console.log('Инициируем вход через Google...');
+            
+            // Сохраняем текущее состояние для восстановления после редиректа
+            sessionStorage.setItem('auth_in_progress', 'true');
             
             const { data, error } = await supabaseService.client.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: window.location.origin
+                    redirectTo: window.location.origin,
+                    queryParams: {
+                        access_type: 'offline',
+                        prompt: 'consent'
+                    }
                 }
             });
             
             if (error) throw error;
-            console.log('Успешный запрос OAuth:', data);
+            
         } catch (error) {
             console.error('Ошибка входа через Google:', error);
             showAuthError('Ошибка входа через Google: ' + error.message);
             setLoading(false);
+            isAuthenticating = false;
         }
     });
 
@@ -87,8 +120,9 @@ document.addEventListener('DOMContentLoaded', () => {
             setLoading(true);
             await supabaseService.signOut();
             localStorage.removeItem('sb-auth-token');
-            mainContainer.classList.add('hidden');
-            authContainer.classList.remove('hidden');
+            sessionStorage.removeItem('auth_in_progress');
+            showContainer(mainContainer, false);
+            showContainer(authContainer, true);
             authForm.reset();
         } catch (error) {
             console.error('Ошибка при выходе:', error);
@@ -98,7 +132,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     async function initializeAuth() {
-        setLoading(true);
+        // Проверяем, был ли начат процесс аутентификации
+        const authInProgress = sessionStorage.getItem('auth_in_progress');
+        if (authInProgress) {
+            setLoading(true);
+            isAuthenticating = true;
+        }
+
         try {
             const { data: sessionData, error: sessionError } = await supabaseService.client.auth.getSession();
             
@@ -121,26 +161,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (user.email !== 'eldevcreator@gmail.com') {
                     await supabaseService.signOut();
                     localStorage.removeItem('sb-auth-token');
+                    sessionStorage.removeItem('auth_in_progress');
                     showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
-                    authContainer.classList.remove('hidden');
-                    mainContainer.classList.add('hidden');
+                    showContainer(authContainer, true);
                     return;
                 }
 
                 updateUserInfo(user);
-                authContainer.classList.add('hidden');
-                mainContainer.classList.remove('hidden');
+                showContainer(authContainer, false);
+                showContainer(mainContainer, true);
             } else {
-                authContainer.classList.remove('hidden');
-                mainContainer.classList.add('hidden');
+                showContainer(authContainer, true);
             }
         } catch (error) {
             console.error('Ошибка инициализации авторизации:', error);
             localStorage.removeItem('sb-auth-token');
-            authContainer.classList.remove('hidden');
-            mainContainer.classList.add('hidden');
+            sessionStorage.removeItem('auth_in_progress');
+            showContainer(authContainer, true);
         } finally {
             setLoading(false);
+            isAuthenticating = false;
+            sessionStorage.removeItem('auth_in_progress');
         }
     }
 

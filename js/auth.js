@@ -9,8 +9,19 @@ document.addEventListener('DOMContentLoaded', () => {
     const googleAuthBtn = document.getElementById('googleAuthBtn');
     const userAvatar = document.getElementById('userAvatar');
     const userName = document.getElementById('userName');
+    const loadingSpinner = document.getElementById('loadingSpinner');
 
     const supabaseService = new SupabaseService();
+
+    function setLoading(isLoading) {
+        if (isLoading) {
+            authContainer.classList.add('loading');
+            loadingSpinner.classList.add('visible');
+        } else {
+            authContainer.classList.remove('loading');
+            loadingSpinner.classList.remove('visible');
+        }
+    }
 
     togglePassword.addEventListener('click', () => {
         if (authPassword.type === 'password') {
@@ -24,11 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     authForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        setLoading(true);
         const email = document.getElementById('authEmail').value;
         const password = authPassword.value;
 
         if (email !== 'eldevcreator@gmail.com') {
             showAuthError('Доступ разрешен только для eldevcreator@gmail.com');
+            setLoading(false);
             return;
         }
 
@@ -38,23 +51,25 @@ document.addEventListener('DOMContentLoaded', () => {
             if (error) throw error;
             
             localStorage.setItem('sb-auth-token', data.session.access_token);
+            updateUserInfo(data.user);
             authContainer.classList.add('hidden');
             mainContainer.classList.remove('hidden');
-            updateUserInfo(data.user);
         } catch (error) {
             showAuthError(error.message);
+        } finally {
+            setLoading(false);
         }
     });
 
     googleAuthBtn.addEventListener('click', async () => {
         try {
+            setLoading(true);
             console.log('Инициируем вход через Google...');
-            console.log('Redirect URL:', 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback');
             
             const { data, error } = await supabaseService.client.auth.signInWithOAuth({
                 provider: 'google',
                 options: {
-                    redirectTo: 'https://wmjejaorufcvbmdhxsjy.supabase.co/auth/v1/callback'
+                    redirectTo: window.location.origin
                 }
             });
             
@@ -63,11 +78,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('Ошибка входа через Google:', error);
             showAuthError('Ошибка входа через Google: ' + error.message);
+            setLoading(false);
         }
     });
 
     logoutBtn.addEventListener('click', async () => {
         try {
+            setLoading(true);
             await supabaseService.signOut();
             localStorage.removeItem('sb-auth-token');
             mainContainer.classList.add('hidden');
@@ -75,16 +92,14 @@ document.addEventListener('DOMContentLoaded', () => {
             authForm.reset();
         } catch (error) {
             console.error('Ошибка при выходе:', error);
+        } finally {
+            setLoading(false);
         }
     });
 
     async function initializeAuth() {
-        // Показываем страницу входа по умолчанию, пока идёт проверка
-        authContainer.classList.remove('hidden');
-        mainContainer.classList.add('hidden');
-
+        setLoading(true);
         try {
-            // Проверяем, есть ли сессия (например, после OAuth-редиректа)
             const { data: sessionData, error: sessionError } = await supabaseService.client.auth.getSession();
             
             if (sessionError) throw sessionError;
@@ -93,19 +108,16 @@ document.addEventListener('DOMContentLoaded', () => {
             let token = localStorage.getItem('sb-auth-token');
 
             if (sessionData.session) {
-                // Если есть сессия после OAuth
                 user = sessionData.session.user;
                 token = sessionData.session.access_token;
                 localStorage.setItem('sb-auth-token', token);
             } else if (token) {
-                // Если есть токен в localStorage, проверяем его
                 const { data: userData, error: userError } = await supabaseService.client.auth.getUser(token);
                 if (userError) throw userError;
                 user = userData.user;
             }
 
             if (user) {
-                // Проверяем email пользователя
                 if (user.email !== 'eldevcreator@gmail.com') {
                     await supabaseService.signOut();
                     localStorage.removeItem('sb-auth-token');
@@ -115,13 +127,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // Пользователь авторизован, показываем панель
+                updateUserInfo(user);
                 authContainer.classList.add('hidden');
                 mainContainer.classList.remove('hidden');
-                updateUserInfo(user);
-                redirectToMainPage();
             } else {
-                // Нет сессии и токена, показываем страницу входа
                 authContainer.classList.remove('hidden');
                 mainContainer.classList.add('hidden');
             }
@@ -130,6 +139,8 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.removeItem('sb-auth-token');
             authContainer.classList.remove('hidden');
             mainContainer.classList.add('hidden');
+        } finally {
+            setLoading(false);
         }
     }
 
@@ -149,12 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    function redirectToMainPage() {
-        const mainPageUrl = 'https://eldevcreatorpanelcontrol.github.io';
-        console.log('Перенаправляем на главную страницу:', mainPageUrl);
-        window.location.href = mainPageUrl;
-    }
-
-    // Инициируем проверку авторизации только один раз
+    // Инициируем проверку авторизации
     initializeAuth();
 });

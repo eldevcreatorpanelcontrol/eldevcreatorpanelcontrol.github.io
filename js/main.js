@@ -10,59 +10,66 @@ class App {
         this.initNavigation();
         this.loadUsers();
         this.initThemeToggle();
+        this.attachEventListeners();
     }
 
-    initThemeToggle() {
-        const toggleBtn = document.createElement('div');
-        toggleBtn.className = 'theme-toggle';
-        toggleBtn.innerHTML = '<i class="fas fa-moon"></i>';
-        document.body.appendChild(toggleBtn);
-
-        toggleBtn.addEventListener('click', () => {
-            document.body.classList.toggle('light-theme');
-            const icon = toggleBtn.querySelector('i');
-            if (document.body.classList.contains('light-theme')) {
-                icon.classList.replace('fa-moon', 'fa-sun');
-            } else {
-                icon.classList.replace('fa-sun', 'fa-moon');
-            }
-        });
-    }
-
-    initModals() {
-        // Основная форма создания пользователя
-        document.getElementById('createUserBtn').addEventListener('click', () => {
-            this.toggleModal('userModal', true);
-        });
-
-        // Формы для разных типов пользователей
+    attachEventListeners() {
+        // Обработчики для карточек создания пользователей
         document.querySelectorAll('.open-modal').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const userType = btn.dataset.type;
+            btn.addEventListener('click', (e) => {
+                const userType = e.currentTarget.dataset.type;
                 document.getElementById('userType').value = userType;
                 this.toggleModal('userModal', true);
             });
         });
 
-        document.querySelectorAll('.close-modal').forEach(btn => {
+        // Обработчик для кнопки быстрого создания
+        const createUserBtn = document.getElementById('createUserBtn');
+        if (createUserBtn) {
+            createUserBtn.addEventListener('click', () => {
+                document.getElementById('userType').value = 'student'; // По умолчанию
+                this.toggleModal('userModal', true);
+            });
+        }
+
+        // Обработчики для модального окна
+        const closeModalBtns = document.querySelectorAll('.close-modal');
+        closeModalBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 this.toggleModal('userModal', false);
             });
         });
 
-        document.getElementById('userForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await this.createUser();
+        // Обработчик формы создания пользователя
+        const userForm = document.getElementById('userForm');
+        if (userForm) {
+            userForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.createUser();
+            });
+        }
+
+        // Обработчики навигации
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.setActiveSection(e.currentTarget.dataset.section);
+            });
         });
     }
 
     toggleModal(modalId, show) {
         const modal = document.getElementById(modalId);
+        if (!modal) return;
+        
         modal.classList.toggle('hidden', !show);
         if (show) {
             modal.classList.add('active');
         } else {
             modal.classList.remove('active');
+            // Сброс формы при закрытии
+            const form = modal.querySelector('form');
+            if (form) form.reset();
         }
     }
 
@@ -91,8 +98,7 @@ class App {
             
             alert(`Пользователь ${user.fullName} успешно создан!`);
             this.toggleModal('userModal', false);
-            document.getElementById('userForm').reset();
-            this.loadUsers();
+            await this.loadUsers(); // Перезагрузка списка пользователей
         } catch (error) {
             console.error('Ошибка создания пользователя:', error);
             alert(`Ошибка: ${error.message}`);
@@ -106,7 +112,17 @@ class App {
             if (error) throw error;
             
             const container = document.getElementById('usersList');
-            container.innerHTML = users.map(user => `
+            if (!container) return;
+
+            // Сохраняем карточки создания новых пользователей
+            const createCards = container.querySelectorAll('.user-card');
+            const createCardsHTML = Array.from(createCards)
+                .filter(card => card.querySelector('.open-modal'))
+                .map(card => card.outerHTML)
+                .join('');
+
+            // Добавляем существующих пользователей
+            const usersHTML = users.map(user => `
                 <div class="user-card ${user.user_type}">
                     <div class="user-icon">
                         ${this.getUserIcon(user.user_type)}
@@ -117,6 +133,9 @@ class App {
                     <p>Создан: ${new Date(user.created_at).toLocaleString()}</p>
                 </div>
             `).join('');
+
+            // Объединяем карточки создания и существующих пользователей
+            container.innerHTML = createCardsHTML + usersHTML;
         } catch (error) {
             console.error('Ошибка загрузки пользователей:', error);
         }
@@ -142,24 +161,41 @@ class App {
         return icons[type] || '<i class="fas fa-user"></i>';
     }
 
-    initNavigation() {
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.setActiveSection(link.dataset.section);
-            });
-        });
-    }
-
     setActiveSection(section) {
+        // Удаляем активный класс у всех ссылок
         document.querySelectorAll('.nav-link').forEach(link => {
             link.classList.remove('active');
         });
-        event.target.classList.add('active');
+        
+        // Добавляем активный класс нужной ссылке
+        const activeLink = document.querySelector(`.nav-link[data-section="${section}"]`);
+        if (activeLink) {
+            activeLink.classList.add('active');
+        }
+        
+        // Здесь можно добавить логику переключения контента разделов
         console.log('Переход в раздел:', section);
+    }
+
+    initThemeToggle() {
+        const toggleBtn = document.createElement('div');
+        toggleBtn.className = 'theme-toggle';
+        toggleBtn.innerHTML = '<i class="fas fa-moon"></i>';
+        document.body.appendChild(toggleBtn);
+
+        toggleBtn.addEventListener('click', () => {
+            document.body.classList.toggle('light-theme');
+            const icon = toggleBtn.querySelector('i');
+            if (document.body.classList.contains('light-theme')) {
+                icon.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                icon.classList.replace('fa-sun', 'fa-moon');
+            }
+        });
     }
 }
 
+// Инициализация приложения после загрузки DOM
 document.addEventListener('DOMContentLoaded', () => {
     new App();
 });

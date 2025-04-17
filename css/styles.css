@@ -27,6 +27,8 @@ body {
     max-width: 1400px;
     margin: 0 auto;
     padding: 20px;
+    opacity: 1;
+    transition: opacity 0.3s ease;
 }
 
 header {
@@ -336,7 +338,6 @@ header {
     }
 }
 
-
 .auth-container {
     display: flex;
     align-items: center;
@@ -344,7 +345,12 @@ header {
     min-height: 100vh;
     background-color: var(--darker);
     opacity: 1;
-    transition: opacity 0.3s ease;
+    transition: all 0.3s ease;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
 }
 
 .auth-container.loading {
@@ -358,11 +364,18 @@ header {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 1000;
+    z-index: 1001;
+    transition: opacity 0.3s ease;
 }
 
 .loading-spinner.visible {
     display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .loading-spinner::after {
